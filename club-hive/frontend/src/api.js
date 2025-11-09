@@ -186,3 +186,48 @@ export async function deleteClub(clubId, token) {
   if (!res.ok) throw new Error('Failed to delete club');
   return res.json();
 }
+
+// Register for an event
+export async function registerForEvent(eventId, token) {
+  const res = await fetch(`${API_BASE}/events/${eventId}/register`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to register for event');
+  }
+  return res.json();
+}
+
+// Unregister from an event
+export async function unregisterFromEvent(eventId, token) {
+  const res = await fetch(`${API_BASE}/events/${eventId}/register`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to unregister from event');
+  }
+  return res.json();
+}
+
+// Get event participants (for board members/admin)
+export async function getEventParticipants(eventId, token) {
+  const res = await fetch(`${API_BASE}/events/${eventId}/participants`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch participants');
+  return res.json();
+}
+
+// Check if current user is registered for an event
+export async function checkMyRegistration(eventId, token) {
+  const res = await fetch(`${API_BASE}/events/${eventId}/my-registration`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to check registration status');
+  return res.json();
+}
+

@@ -370,7 +370,8 @@ function App() {
                 {isMember && <p>You are a Member. You can join clubs, RSVP to events, and earn points. Board members of clubs have additional privileges for their clubs.</p>}
               </div>
 
-              <MyClubs token={token} />
+              {/* Only show My Clubs for non-admin users */}
+              {!isAdmin && <MyClubs token={token} />}
               
               <div className="quick-stats">
                 <h3>Quick Actions</h3>

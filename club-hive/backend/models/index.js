@@ -33,5 +33,8 @@ db.Event.belongsTo(db.Club);
 
 db.User.belongsToMany(db.Event, { through: db.EventParticipation });
 db.Event.belongsToMany(db.User, { through: db.EventParticipation });
+// Add direct associations for eager loading
+db.EventParticipation.belongsTo(db.User, { foreignKey: 'UserId' });
+db.EventParticipation.belongsTo(db.Event, { foreignKey: 'EventId' });
 
 module.exports = db;
