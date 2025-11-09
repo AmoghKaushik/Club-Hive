@@ -9,13 +9,19 @@ router.get('/', [auth, checkRole(['admin'])], async (req, res) => {
   res.json(users);
 });
 
-// Get all club memberships for a user (admin only) 
-router.get('/:userId/memberships', [auth, checkRole(['admin'])], async (req, res) => {
+// Get all club memberships for a user (user can view their own, admin can view anyone's)
+router.get('/:userId/memberships', auth, async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    // Users can only view their own memberships unless they're admin
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden: You can only view your own memberships' });
+    }
+    
     const memberships = await ClubMembership.findAll({
-      where: { userId, status: 'approved' },
-      include: [{ model: Club, attributes: ['id', 'name'] }]
+      where: { userId },
+      include: [{ model: Club, attributes: ['id', 'name', 'description', 'status'] }]
     });
     res.json(memberships);
   } catch (error) {

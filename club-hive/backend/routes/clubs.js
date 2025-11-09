@@ -135,11 +135,28 @@ router.post('/:clubId/join', auth, async (req, res) => {
   }
 });
 
-// Approve/reject membership (Club head or Admin)
-router.put('/:clubId/membership/:userId', [auth, checkRole(['admin', 'club_head'])], async (req, res) => {
+// Approve/reject membership (Board members or Admin)
+router.put('/:clubId/membership/:userId', auth, async (req, res) => {
   try {
     const { status } = req.body;
     const { clubId, userId } = req.params;
+
+    // Admin can approve/reject any membership
+    if (req.user.role !== 'admin') {
+      // Check if user is a board member of this club
+      const boardMembership = await ClubMembership.findOne({
+        where: {
+          clubId,
+          userId: req.user.id,
+          role: 'board',
+          status: 'approved'
+        }
+      });
+      
+      if (!boardMembership) {
+        return res.status(403).json({ message: 'Forbidden: Only board members can manage memberships for this club' });
+      }
+    }
 
     const membership = await ClubMembership.findOne({
       where: { clubId, userId }

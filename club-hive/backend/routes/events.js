@@ -32,10 +32,28 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Create event (Admin only)
-router.post('/', [auth, checkRole(['admin'])], async (req, res) => {
+// Create event (Admin or Board members of that club)
+router.post('/', auth, async (req, res) => {
   try {
     const { title, description, venue, date, ClubId } = req.body;
+    
+    // Admin can create events for any club
+    if (req.user.role !== 'admin') {
+      // Check if user is a board member of this club
+      const membership = await ClubMembership.findOne({
+        where: {
+          clubId: ClubId,
+          userId: req.user.id,
+          role: 'board',
+          status: 'approved'
+        }
+      });
+      
+      if (!membership) {
+        return res.status(403).json({ message: 'Forbidden: Only board members can create events for this club' });
+      }
+    }
+    
     const event = await Event.create({
       title,
       description,

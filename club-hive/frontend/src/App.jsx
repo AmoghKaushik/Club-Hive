@@ -9,6 +9,7 @@ import MyClubs from './components/MyClubs.jsx';
 import EventsList from './components/EventsList.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import ManageMembers from './components/ManageMembers.jsx';
+import ClubSelector from './components/ClubSelector.jsx';
 
 function App() {
   const [token, setToken] = useState('');
@@ -22,6 +23,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'clubs', 'events', 'leaderboard'
   const [managingClub, setManagingClub] = useState(null); // { clubId, clubName } for ManageMembers modal
   const [userMemberships, setUserMemberships] = useState([]); // User's club memberships with status
+  const [clubSelectorMode, setClubSelectorMode] = useState(null); // 'edit' or 'delete'
   const { route, navigate } = useRouter();
 
   // Fetch clubs when user logs in or token changes
@@ -172,13 +174,11 @@ function App() {
       alert('No clubs available to edit');
       return;
     }
-    
-    const clubOptions = clubs.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-    const clubIdx = parseInt(prompt(`Select club to edit:\n${clubOptions}`), 10) - 1;
-    
-    if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= clubs.length) return;
-    
-    const club = clubs[clubIdx];
+    setClubSelectorMode('edit');
+  }
+
+  async function onClubSelectedForEdit(club) {
+    setClubSelectorMode(null);
     const newName = prompt('Enter new name (leave blank to keep current):', club.name);
     const newDescription = prompt('Enter new description (leave blank to keep current):', club.description);
     
@@ -199,13 +199,11 @@ function App() {
       alert('No clubs available to delete');
       return;
     }
-    
-    const clubOptions = clubs.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-    const clubIdx = parseInt(prompt(`Select club to delete:\n${clubOptions}`), 10) - 1;
-    
-    if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= clubs.length) return;
-    
-    const club = clubs[clubIdx];
+    setClubSelectorMode('delete');
+  }
+
+  async function onClubSelectedForDelete(club) {
+    setClubSelectorMode(null);
     
     if (!confirm(`⚠️ Are you sure you want to delete "${club.name}"?\n\nThis will remove all members and events associated with this club.\n\nThis action cannot be undone!`)) {
       return;
@@ -311,7 +309,10 @@ function App() {
             </button>
             <button 
               className={`tab-btn ${activeTab === 'clubs' ? 'active' : ''}`}
-              onClick={() => setActiveTab('clubs')}
+              onClick={() => {
+                setActiveTab('clubs');
+                fetchUserMemberships(); // Refresh memberships when viewing clubs
+              }}
             >
               🏛️ Clubs
             </button>
@@ -401,15 +402,20 @@ function App() {
                   {clubs.map(c => {
                     const isBoardMember = isUserBoardMember(c.id);
                     const canManageClub = isAdmin || isBoardMember;
-                    const isMemberOfClub = isUserMemberOf(c.id);
+                    const membership = userMemberships.find(m => m.Club?.id === c.id);
+                    const isApprovedMember = membership && membership.status === 'approved';
+                    const isPendingMember = membership && membership.status === 'pending';
+                    
+                    // Debug logging
+                    console.log(`Club: ${c.name}, Membership:`, membership, `Approved: ${isApprovedMember}, Pending: ${isPendingMember}`);
                     
                     return (
                     <li key={c.id}>
                       <h3>{c.name}</h3>
                       <p style={{color:'#888'}}>{c.description}</p>
                       
-                      {/* Show member badge if already a member */}
-                      {isMemberOfClub && !canManageClub && (
+                      {/* Show member badge if already an approved member */}
+                      {isApprovedMember && !canManageClub && (
                         <span style={{
                           display: 'inline-block',
                           padding: '6px 12px',
@@ -424,8 +430,24 @@ function App() {
                         </span>
                       )}
                       
+                      {/* Show pending badge if request is pending */}
+                      {isPendingMember && !canManageClub && (
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '6px 12px',
+                          background: '#fff3cd',
+                          color: '#856404',
+                          borderRadius: '6px',
+                          fontSize: '0.9rem',
+                          fontWeight: '500',
+                          marginBottom: '8px'
+                        }}>
+                          ⏳ Request Pending
+                        </span>
+                      )}
+                      
                       {/* Join button only if not a member and not a manager */}
-                      {isMember && !isMemberOfClub && !canManageClub && (
+                      {isMember && !isApprovedMember && !isPendingMember && !canManageClub && (
                         <button onClick={async () => {
                           try {
                             const res = await fetch(`http://localhost:5001/api/clubs/${c.id}/join`, {
@@ -523,6 +545,25 @@ function App() {
           token={token}
           isAdmin={isAdmin}
           onClose={() => setManagingClub(null)}
+        />
+      )}
+      
+      {/* Club Selector Modal */}
+      {clubSelectorMode === 'edit' && (
+        <ClubSelector
+          clubs={clubs}
+          title="Select Club to Edit"
+          onSelect={onClubSelectedForEdit}
+          onCancel={() => setClubSelectorMode(null)}
+        />
+      )}
+      
+      {clubSelectorMode === 'delete' && (
+        <ClubSelector
+          clubs={clubs}
+          title="Select Club to Delete"
+          onSelect={onClubSelectedForDelete}
+          onCancel={() => setClubSelectorMode(null)}
         />
       )}
     </div>
