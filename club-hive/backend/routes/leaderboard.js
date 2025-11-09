@@ -1,8 +1,20 @@
 const router = require('express').Router();
+const { User } = require('../models');
 
-// Placeholder leaderboard route
+// Get leaderboard - users sorted by points
 router.get('/', async (req, res) => {
-  res.json({ message: 'Leaderboard endpoint (placeholder)' });
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'name', 'email', 'points'],
+      order: [['points', 'DESC']],
+      limit: 50 // Top 50 users
+    });
+
+    res.json(users);
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    res.status(500).json({ message: 'Failed to fetch leaderboard' });
+  }
 });
 
 module.exports = router;

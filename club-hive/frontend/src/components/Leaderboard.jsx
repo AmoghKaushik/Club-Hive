@@ -16,9 +16,18 @@ export default function Leaderboard({ token, user }) {
     setError('');
     try {
       const data = await getLeaderboard(token);
-      setLeaderboard(data);
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setLeaderboard(data);
+      } else {
+        console.error('Invalid leaderboard data:', data);
+        setLeaderboard([]);
+        setError('Invalid leaderboard data received');
+      }
     } catch (err) {
+      console.error('Leaderboard fetch error:', err);
       setError('Failed to load leaderboard');
+      setLeaderboard([]);
     } finally {
       setLoading(false);
     }

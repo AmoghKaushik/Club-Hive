@@ -6,8 +6,9 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true
     },
     role: {
-      type: DataTypes.ENUM('member', 'club_head', 'president', 'secretary', 'volunteer'),
-      defaultValue: 'member'
+      type: DataTypes.ENUM('member', 'board'),
+      defaultValue: 'member',
+      comment: 'board = club leaders who can manage club, member = regular members'
     },
     status: {
       type: DataTypes.ENUM('pending', 'approved', 'rejected'),

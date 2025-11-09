@@ -20,6 +20,15 @@ export async function getUsers(token) {
   return res.json();
 }
 
+// Get user's club memberships (admin only)
+export async function getUserMemberships(userId, token) {
+  const res = await fetch(`${API_BASE}/users/${userId}/memberships`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch user memberships');
+  return res.json();
+}
+
 // Promote user to club head (admin only)
 export async function promoteUser(userId, role, token) {
   const res = await fetch(`${API_BASE}/users/${userId}/role`, {

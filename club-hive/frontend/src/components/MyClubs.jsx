@@ -35,11 +35,8 @@ export default function MyClubs({ token }) {
 
   const getRoleBadge = (role) => {
     const badges = {
-      club_head: { text: 'Club Head', className: 'role-badge role-head' },
-      president: { text: 'President', className: 'role-badge role-president' },
-      secretary: { text: 'Secretary', className: 'role-badge role-secretary' },
-      member: { text: 'Member', className: 'role-badge role-member' },
-      volunteer: { text: 'Volunteer', className: 'role-badge role-volunteer' }
+      board: { text: 'Board Member', className: 'role-badge role-board' },
+      member: { text: 'Member', className: 'role-badge role-member' }
     };
     return badges[role] || badges.member;
   };

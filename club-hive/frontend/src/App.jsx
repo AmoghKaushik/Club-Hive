@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { assignUserClubRole, getClubs, getEvents, getPendingMemberships, getUsers, promoteUser, updateMembershipStatus } from './api';
+import { useState, useEffect } from 'react';
+import { assignUserClubRole, getClubs, getEvents, getPendingMemberships, getUsers, getUserMemberships, promoteUser, updateMembershipStatus } from './api';
 import './App.css';
 import LoginPage from './LoginPage.jsx';
 import RegisterPage from './RegisterPage.jsx';
@@ -20,6 +20,13 @@ function App() {
   const [showUsers, setShowUsers] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'clubs', 'events', 'leaderboard'
   const { route, navigate } = useRouter();
+
+  // Fetch clubs when user logs in or token changes
+  useEffect(() => {
+    if (token && user) {
+      fetchClubs();
+    }
+  }, [token, user]);
 
   // Fetch all users (admin only)
   async function fetchUsers() {
@@ -44,26 +51,53 @@ function App() {
     }
   }
 
-  // Assign user as club_head/president/secretary for a specific club
-  async function handleAssignClubRole(userId) {
+  // Assign user role for a specific club
+  async function handleAssignClubRole(userId, userName) {
     setError('');
     try {
-      if (clubs.length === 0) {
-        await fetchClubs();
-      }
-      const clubOptions = clubs.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
-      const clubIdx = parseInt(prompt(`Select club for this user:\n${clubOptions}`), 10) - 1;
-      if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= clubs.length) return;
-      const clubId = clubs[clubIdx].id;
-      const role = prompt('Enter role: club_head, president, or secretary', 'club_head');
-      if (!['club_head', 'president', 'secretary'].includes(role)) {
-        alert('Invalid role');
+      // First get user's current memberships
+      const memberships = await getUserMemberships(userId, token);
+      
+      if (memberships.length === 0) {
+        alert(`${userName} is not a member of any clubs yet. They need to join a club first.`);
         return;
       }
-      await assignUserClubRole(userId, clubId, role, token);
-      alert(`User assigned as ${role} for club ${clubs[clubIdx].name}`);
+      
+      // Show clubs user is part of
+      const clubOptions = memberships.map((m, i) => 
+        `${i + 1}. ${m.Club.name} (Current role: ${m.role})`
+      ).join('\n');
+      
+      const clubIdx = parseInt(prompt(`Select club to update role for ${userName}:\n${clubOptions}`), 10) - 1;
+      if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= memberships.length) return;
+      
+      const selectedMembership = memberships[clubIdx];
+      const clubId = selectedMembership.Club.id;
+      const clubName = selectedMembership.Club.name;
+      
+      const role = prompt(
+        `Select role for ${userName} in ${clubName}:\n` +
+        `Type "board" for Board Member (can manage club)\n` +
+        `Type "member" for Regular Member`,
+        selectedMembership.role
+      );
+      
+      if (!role || !['board', 'member'].includes(role.toLowerCase())) {
+        alert('Invalid role. Must be "board" or "member"');
+        return;
+      }
+      
+      const result = await assignUserClubRole(userId, clubId, role.toLowerCase(), token);
+      alert(result.message || `Role updated successfully!`);
+      
+      // Refresh if showing users list
+      if (showUsers) {
+        fetchUsers();
+      }
     } catch (err) {
-      setError('Could not assign club role');
+      console.error('Role assignment error:', err);
+      setError(err.message || 'Could not assign club role');
+      alert('Error: ' + (err.message || 'Could not assign club role'));
     }
   }
   // Fetch pending join requests for a club
@@ -122,9 +156,17 @@ function App() {
     }
   }
 
+  // Helper function to check if user is board member of a specific club
+  function isUserBoardMember(clubId) {
+    if (!user || !clubs.length) return false;
+    const club = clubs.find(c => c.id === clubId);
+    if (!club || !club.Users) return false;
+    const membership = club.Users.find(u => u.id === user.id);
+    return membership && membership.ClubMembership?.role === 'board';
+  }
+
   // Role-based UI helpers
   const isAdmin = user?.role === 'admin';
-  const isClubHead = user?.role === 'club_head' || user?.role === 'president' || user?.role === 'secretary';
   const isMember = user?.role === 'member';
 
   return (
@@ -196,11 +238,10 @@ function App() {
           {activeTab === 'dashboard' && (
             <div className="dashboard-tab">
               <div className="user-role-card">
-                <h3>Your Role</h3>
+                <h3>Your Account</h3>
                 <div className="role-badge-large">{user.role.replace('_', ' ').toUpperCase()}</div>
-                {isAdmin && <p>You are an Admin. You can create/manage clubs and approve requests.</p>}
-                {isClubHead && <p>You are a Club Head. You can manage your club and events.</p>}
-                {isMember && <p>You are a Student Member. You can join clubs and RSVP to events.</p>}
+                {isAdmin && <p>You are an Admin. You can create clubs, manage all users, and control everything.</p>}
+                {isMember && <p>You are a Member. You can join clubs, RSVP to events, and earn points. Board members of clubs have additional privileges for their clubs.</p>}
               </div>
 
               <MyClubs token={token} />
@@ -249,13 +290,18 @@ function App() {
 
                   {showUsers && (
                     <div className="pending-box">
-                      <b>All Users:</b>
+                      <b>All Users & Their Club Roles:</b>
+                      <p style={{fontSize:'0.9em', color:'#666', marginTop:8}}>
+                        Click "Manage Club Role" to assign users as Board members or regular Members for specific clubs.
+                      </p>
                       <ul>
                         {users.length === 0 && <li>No users found</li>}
                         {users.map(u => (
                           <li key={u.id}>
-                            {u.name} ({u.email}) - {u.role}
-                            <button style={{marginLeft:8}} onClick={() => handleAssignClubRole(u.id)}>Assign Club Role</button>
+                            {u.name} ({u.email}) - <span style={{fontWeight:'bold'}}>{u.role}</span>
+                            <button style={{marginLeft:8}} onClick={() => handleAssignClubRole(u.id, u.name)}>
+                              Manage Club Role
+                            </button>
                           </li>
                         ))}
                       </ul>
@@ -270,11 +316,15 @@ function App() {
                 <div className="empty-state"><p>No clubs available. {isAdmin && 'Create one above!'}</p></div>
               ) : (
                 <ul className="club-list">
-                  {clubs.map(c => (
+                  {clubs.map(c => {
+                    const isBoardMember = isUserBoardMember(c.id);
+                    const canManageClub = isAdmin || isBoardMember;
+                    
+                    return (
                     <li key={c.id}>
                       <h3>{c.name}</h3>
                       <p style={{color:'#888'}}>{c.description}</p>
-                      {isMember && (
+                      {isMember && !canManageClub && (
                         <button onClick={async () => {
                           try {
                             const res = await fetch(`http://localhost:5001/api/clubs/${c.id}/join`, {
@@ -291,7 +341,7 @@ function App() {
                           }
                         }}>Request to Join</button>
                       )}
-                      {(isAdmin || isClubHead) && (
+                      {canManageClub && (
                         <>
                           <button style={{marginLeft:8}} onClick={async () => {
                             const title = prompt('Event title?');
@@ -336,7 +386,8 @@ function App() {
                         </div>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>

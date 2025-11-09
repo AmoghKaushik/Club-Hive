@@ -14,7 +14,8 @@ export default function LoginPage({ onLogin, setError }) {
       const me = await getMe(res.token)
       onLogin(res.token, me)
     } catch (err) {
-      setError('Login failed')
+      console.error('Login error:', err)
+      setError(err.message || 'Login failed. Please check your credentials.')
     }
   }
 

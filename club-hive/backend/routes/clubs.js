@@ -3,7 +3,7 @@ const { Club, User, ClubMembership } = require('../models');
 const auth = require('../middleware/auth');
 const checkRole = require('../middleware/checkRole');
 
-// Get pending join requests for a club (admin/club head)
+// Get pending join requests for a club (admin/board members)
 router.get('/:clubId/pending', auth, async (req, res) => {
   try {
     const { clubId } = req.params;
@@ -15,17 +15,17 @@ router.get('/:clubId/pending', auth, async (req, res) => {
       });
       return res.json(pending);
     }
-    // Check if user is club_head, president, or secretary for this club
+    // Check if user is board member for this club
     const membership = await ClubMembership.findOne({
       where: {
         clubId,
         userId: req.user.id,
-        role: ['club_head', 'president', 'secretary'],
+        role: 'board',
         status: 'approved'
       }
     });
     if (!membership) {
-      return res.status(403).json({ message: 'Forbidden: not a club manager for this club' });
+      return res.status(403).json({ message: 'Forbidden: not a board member for this club' });
     }
     const pending = await ClubMembership.findAll({
       where: { clubId, status: 'pending' },
