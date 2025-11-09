@@ -137,3 +137,20 @@
   background: #f5f5f5;
   color: #616161;
 }
+
+.manage-btn {
+  width: 100%;
+  padding: 8px 16px;
+  background: #2a3d66;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.manage-btn:hover {
+  background: #1e2d4d;
+}

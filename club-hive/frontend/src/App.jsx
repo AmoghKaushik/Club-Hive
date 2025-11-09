@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { assignUserClubRole, getClubs, getEvents, getPendingMemberships, getUsers, getUserMemberships, promoteUser, updateMembershipStatus } from './api';
+import { assignUserClubRole, getClubs, getEvents, getPendingMemberships, getUsers, getUserMemberships, promoteUser, updateMembershipStatus, updateClub, deleteClub } from './api';
 import './App.css';
 import LoginPage from './LoginPage.jsx';
 import RegisterPage from './RegisterPage.jsx';
@@ -8,6 +8,7 @@ import { useRouter } from './router.jsx';
 import MyClubs from './components/MyClubs.jsx';
 import EventsList from './components/EventsList.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
+import ManageMembers from './components/ManageMembers.jsx';
 
 function App() {
   const [token, setToken] = useState('');
@@ -19,14 +20,31 @@ function App() {
   const [users, setUsers] = useState([]);
   const [showUsers, setShowUsers] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'clubs', 'events', 'leaderboard'
+  const [managingClub, setManagingClub] = useState(null); // { clubId, clubName } for ManageMembers modal
+  const [userMemberships, setUserMemberships] = useState([]); // User's club memberships with status
   const { route, navigate } = useRouter();
 
   // Fetch clubs when user logs in or token changes
   useEffect(() => {
     if (token && user) {
       fetchClubs();
+      fetchUserMemberships();
     }
   }, [token, user]);
+
+  async function fetchUserMemberships() {
+    try {
+      const data = await getUserMemberships(user.id, token);
+      setUserMemberships(data);
+    } catch (err) {
+      // Not critical, just for UI enhancement
+      console.error('Could not fetch memberships:', err);
+    }
+  }
+
+  function isUserMemberOf(clubId) {
+    return userMemberships.some(m => m.Club?.id === clubId && (m.status === 'approved' || m.status === 'pending'));
+  }
 
   // Fetch all users (admin only)
   async function fetchUsers() {
@@ -58,8 +76,10 @@ function App() {
       // First get user's current memberships
       const memberships = await getUserMemberships(userId, token);
       
+      console.log(`Fetched memberships for ${userName}:`, memberships);
+      
       if (memberships.length === 0) {
-        alert(`${userName} is not a member of any clubs yet. They need to join a club first.`);
+        alert(`❌ ${userName} is not a member of any clubs yet.\n\nThey need to:\n1. Request to join a club\n2. Get approved by admin or board member\n3. Then you can assign them a role`);
         return;
       }
       
@@ -68,27 +88,47 @@ function App() {
         `${i + 1}. ${m.Club.name} (Current role: ${m.role})`
       ).join('\n');
       
-      const clubIdx = parseInt(prompt(`Select club to update role for ${userName}:\n${clubOptions}`), 10) - 1;
-      if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= memberships.length) return;
+      const clubSelection = prompt(
+        `📋 Select a club to manage role for ${userName}:\n\n${clubOptions}\n\nEnter the number (1, 2, 3...):`
+      );
+      
+      if (!clubSelection) return; // User cancelled
+      
+      const clubIdx = parseInt(clubSelection, 10) - 1;
+      if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= memberships.length) {
+        alert('❌ Invalid selection. Please try again.');
+        return;
+      }
       
       const selectedMembership = memberships[clubIdx];
       const clubId = selectedMembership.Club.id;
       const clubName = selectedMembership.Club.name;
       
-      const role = prompt(
-        `Select role for ${userName} in ${clubName}:\n` +
-        `Type "board" for Board Member (can manage club)\n` +
-        `Type "member" for Regular Member`,
+      const roleSelection = prompt(
+        `🎭 Select role for ${userName} in "${clubName}":\n\n` +
+        `Current role: ${selectedMembership.role.toUpperCase()}\n\n` +
+        `Options:\n` +
+        `• Type "board" = Board Member (can create events, approve members)\n` +
+        `• Type "member" = Regular Member (can attend events)\n\n` +
+        `Enter your choice:`,
         selectedMembership.role
       );
       
-      if (!role || !['board', 'member'].includes(role.toLowerCase())) {
-        alert('Invalid role. Must be "board" or "member"');
+      if (!roleSelection) return; // User cancelled
+      
+      const role = roleSelection.toLowerCase().trim();
+      
+      if (!['board', 'member'].includes(role)) {
+        alert('❌ Invalid role. Must be "board" or "member"');
         return;
       }
       
-      const result = await assignUserClubRole(userId, clubId, role.toLowerCase(), token);
-      alert(result.message || `Role updated successfully!`);
+      console.log(`Assigning role "${role}" to user ${userId} for club ${clubId}`);
+      
+      const result = await assignUserClubRole(userId, clubId, role, token);
+      console.log('Assignment result:', result);
+      
+      alert(`✅ Success!\n\n${result.message || `${userName} is now a ${role.toUpperCase()} member of ${clubName}`}`);
       
       // Refresh if showing users list
       if (showUsers) {
@@ -97,7 +137,7 @@ function App() {
     } catch (err) {
       console.error('Role assignment error:', err);
       setError(err.message || 'Could not assign club role');
-      alert('Error: ' + (err.message || 'Could not assign club role'));
+      alert('❌ Error: ' + (err.message || 'Could not assign club role'));
     }
   }
   // Fetch pending join requests for a club
@@ -117,8 +157,66 @@ function App() {
     try {
       await updateMembershipStatus(clubId, userId, status, token);
       fetchPending(clubId);
+      if (status === 'approved') {
+        // Refresh user memberships to update UI
+        fetchUserMemberships();
+      }
     } catch (err) {
       setError('Could not update membership');
+    }
+  }
+
+  // Edit club (admin only)
+  async function handleEditClub() {
+    if (clubs.length === 0) {
+      alert('No clubs available to edit');
+      return;
+    }
+    
+    const clubOptions = clubs.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+    const clubIdx = parseInt(prompt(`Select club to edit:\n${clubOptions}`), 10) - 1;
+    
+    if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= clubs.length) return;
+    
+    const club = clubs[clubIdx];
+    const newName = prompt('Enter new name (leave blank to keep current):', club.name);
+    const newDescription = prompt('Enter new description (leave blank to keep current):', club.description);
+    
+    if (!newName && !newDescription) return;
+    
+    try {
+      await updateClub(club.id, newName || club.name, newDescription !== null ? newDescription : club.description, token);
+      alert('Club updated successfully!');
+      fetchClubs();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  // Delete club (admin only)
+  async function handleDeleteClub() {
+    if (clubs.length === 0) {
+      alert('No clubs available to delete');
+      return;
+    }
+    
+    const clubOptions = clubs.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+    const clubIdx = parseInt(prompt(`Select club to delete:\n${clubOptions}`), 10) - 1;
+    
+    if (isNaN(clubIdx) || clubIdx < 0 || clubIdx >= clubs.length) return;
+    
+    const club = clubs[clubIdx];
+    
+    if (!confirm(`⚠️ Are you sure you want to delete "${club.name}"?\n\nThis will remove all members and events associated with this club.\n\nThis action cannot be undone!`)) {
+      return;
+    }
+    
+    try {
+      await deleteClub(club.id, token);
+      alert('Club deleted successfully!');
+      fetchClubs();
+    } catch (err) {
+      alert('Error: ' + err.message);
     }
   }
 
@@ -262,7 +360,7 @@ function App() {
             <div className="clubs-tab">
               {isAdmin && (
                 <div className="admin-section">
-                  <h3>Admin: Create Club</h3>
+                  <h3>Admin: Manage Clubs</h3>
                   <button onClick={async () => {
                     const name = prompt('Club name?');
                     const description = prompt('Description?');
@@ -284,29 +382,13 @@ function App() {
                     }
                   }}>+ Create New Club</button>
 
-                  <button style={{marginLeft:8}} onClick={() => { setShowUsers(v => !v); if (!showUsers) fetchUsers(); }}>
-                    {showUsers ? 'Hide' : 'Manage User Roles'}
+                  <button style={{marginLeft:8}} onClick={handleEditClub}>
+                    Edit Club
                   </button>
 
-                  {showUsers && (
-                    <div className="pending-box">
-                      <b>All Users & Their Club Roles:</b>
-                      <p style={{fontSize:'0.9em', color:'#666', marginTop:8}}>
-                        Click "Manage Club Role" to assign users as Board members or regular Members for specific clubs.
-                      </p>
-                      <ul>
-                        {users.length === 0 && <li>No users found</li>}
-                        {users.map(u => (
-                          <li key={u.id}>
-                            {u.name} ({u.email}) - <span style={{fontWeight:'bold'}}>{u.role}</span>
-                            <button style={{marginLeft:8}} onClick={() => handleAssignClubRole(u.id, u.name)}>
-                              Manage Club Role
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <button style={{marginLeft:8}} onClick={handleDeleteClub}>
+                    Delete Club
+                  </button>
                 </div>
               )}
 
@@ -319,12 +401,31 @@ function App() {
                   {clubs.map(c => {
                     const isBoardMember = isUserBoardMember(c.id);
                     const canManageClub = isAdmin || isBoardMember;
+                    const isMemberOfClub = isUserMemberOf(c.id);
                     
                     return (
                     <li key={c.id}>
                       <h3>{c.name}</h3>
                       <p style={{color:'#888'}}>{c.description}</p>
-                      {isMember && !canManageClub && (
+                      
+                      {/* Show member badge if already a member */}
+                      {isMemberOfClub && !canManageClub && (
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '6px 12px',
+                          background: '#e8f5e9',
+                          color: '#2e7d32',
+                          borderRadius: '6px',
+                          fontSize: '0.9rem',
+                          fontWeight: '500',
+                          marginBottom: '8px'
+                        }}>
+                          ✓ Member
+                        </span>
+                      )}
+                      
+                      {/* Join button only if not a member and not a manager */}
+                      {isMember && !isMemberOfClub && !canManageClub && (
                         <button onClick={async () => {
                           try {
                             const res = await fetch(`http://localhost:5001/api/clubs/${c.id}/join`, {
@@ -336,14 +437,16 @@ function App() {
                             });
                             if (!res.ok) throw new Error('Failed to request join');
                             alert('Join request sent!');
+                            fetchUserMemberships();
                           } catch (err) {
                             setError('Could not send join request');
                           }
                         }}>Request to Join</button>
                       )}
+                      
                       {canManageClub && (
                         <>
-                          <button style={{marginLeft:8}} onClick={async () => {
+                          <button style={{marginLeft:0}} onClick={async () => {
                             const title = prompt('Event title?');
                             const description = prompt('Description?');
                             const venue = prompt('Venue?');
@@ -367,6 +470,9 @@ function App() {
                           }}>Create Event</button>
                           <button style={{marginLeft:8}} onClick={() => fetchPending(c.id)}>
                             Manage Requests
+                          </button>
+                          <button style={{marginLeft:8}} onClick={() => setManagingClub({ clubId: c.id, clubName: c.name })}>
+                            Manage Members
                           </button>
                         </>
                       )}
@@ -407,6 +513,17 @@ function App() {
             </div>
           )}
         </div>
+      )}
+      
+      {/* Manage Members Modal */}
+      {managingClub && (
+        <ManageMembers
+          clubId={managingClub.clubId}
+          clubName={managingClub.clubName}
+          token={token}
+          isAdmin={isAdmin}
+          onClose={() => setManagingClub(null)}
+        />
       )}
     </div>
   )

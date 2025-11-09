@@ -1,12 +1,30 @@
 const router = require('express').Router();
-const { Event, Club } = require('../models');
+const { Event, Club, ClubMembership } = require('../models');
 const auth = require('../middleware/auth');
 const checkRole = require('../middleware/checkRole');
 
-// Get all events
+// Get events for user's clubs only
 router.get('/', auth, async (req, res) => {
   try {
-    const events = await Event.findAll({ include: [Club] });
+    // If admin, show all events
+    if (req.user.role === 'admin') {
+      const events = await Event.findAll({ include: [Club] });
+      return res.json(events);
+    }
+    
+    // Get user's approved club memberships
+    const memberships = await ClubMembership.findAll({
+      where: { userId: req.user.id, status: 'approved' },
+      attributes: ['clubId']
+    });
+    
+    const clubIds = memberships.map(m => m.clubId);
+    
+    // Get events only for those clubs
+    const events = await Event.findAll({ 
+      where: { ClubId: clubIds },
+      include: [Club] 
+    });
     res.json(events);
   } catch (error) {
     console.error(error);

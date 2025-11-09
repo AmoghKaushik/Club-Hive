@@ -126,3 +126,63 @@ export async function getLeaderboard(token) {
   if (!res.ok) throw new Error('Failed to fetch leaderboard');
   return res.json();
 }
+
+// Get club members
+export async function getClubMembers(clubId, token) {
+  const res = await fetch(`${API_BASE}/clubs/${clubId}/members`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch club members');
+  return res.json();
+}
+
+// Update member role in club
+export async function updateMemberRole(clubId, userId, role, roleName, token) {
+  const res = await fetch(`${API_BASE}/clubs/${clubId}/members/${userId}/role`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ role, roleName })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to update role');
+  }
+  return res.json();
+}
+
+// Remove member from club
+export async function removeMemberFromClub(clubId, userId, token) {
+  const res = await fetch(`${API_BASE}/clubs/${clubId}/members/${userId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to remove member');
+  return res.json();
+}
+
+// Update club (admin only)
+export async function updateClub(clubId, name, description, token) {
+  const res = await fetch(`${API_BASE}/clubs/${clubId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ name, description })
+  });
+  if (!res.ok) throw new Error('Failed to update club');
+  return res.json();
+}
+
+// Delete club (admin only)
+export async function deleteClub(clubId, token) {
+  const res = await fetch(`${API_BASE}/clubs/${clubId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to delete club');
+  return res.json();
+}
