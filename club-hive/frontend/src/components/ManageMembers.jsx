@@ -3,8 +3,8 @@ import { getClubMembers, updateMemberRole, removeMemberFromClub } from '../api';
 import './ManageMembers.css';
 
 const BOARD_ROLES = ['President', 'Vice President', 'General Secretary', 'Treasurer', 'HR Head', 'PR Head'];
-const MEMBER_ROLES = ['Member', 'Managing Committee', 'Working Committee', 'Volunteer', 'Other'];
-const FLEXIBLE_ROLES = ['Managing Committee', 'Working Committee', 'Other'];
+const MEMBER_ROLES = ['Member', 'Managing Committee', 'Working Committee', 'Volunteer'];
+const FLEXIBLE_ROLES = ['Other'];
 
 export default function ManageMembers({ clubId, clubName, token, isAdmin, onClose }) {
   const [members, setMembers] = useState([]);

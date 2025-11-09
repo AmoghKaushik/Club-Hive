@@ -12,8 +12,14 @@ import ManageMembers from './components/ManageMembers.jsx';
 import ClubSelector from './components/ClubSelector.jsx';
 
 function App() {
-  const [token, setToken] = useState('');
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => {
+    const savedToken = localStorage.getItem('token');
+    return savedToken || '';
+  });
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
   const [error, setError] = useState('');
@@ -26,11 +32,32 @@ function App() {
   const [clubSelectorMode, setClubSelectorMode] = useState(null); // 'edit' or 'delete'
   const { route, navigate } = useRouter();
 
+  // Save token and user to localStorage whenever they change
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('token', token);
+    } else {
+      localStorage.removeItem('token');
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, [user]);
+
   // Fetch clubs when user logs in or token changes
   useEffect(() => {
     if (token && user) {
       fetchClubs();
       fetchUserMemberships();
+      // Navigate to home if on login/register page
+      if (route === '/login' || route === '/register') {
+        navigate('/');
+      }
     }
   }, [token, user]);
 
@@ -364,8 +391,11 @@ function App() {
                   <h3>Admin: Manage Clubs</h3>
                   <button onClick={async () => {
                     const name = prompt('Club name?');
+                    if (!name) return; // User cancelled, stop here
+                    
                     const description = prompt('Description?');
-                    if (!name) return;
+                    if (description === null) return; // User cancelled, stop here
+                    
                     try {
                       const res = await fetch('http://localhost:5001/api/clubs', {
                         method: 'POST',
@@ -470,10 +500,17 @@ function App() {
                         <>
                           <button style={{marginLeft:0}} onClick={async () => {
                             const title = prompt('Event title?');
+                            if (!title) return; // User cancelled, stop here
+                            
                             const description = prompt('Description?');
+                            if (description === null) return; // User cancelled, stop here
+                            
                             const venue = prompt('Venue?');
+                            if (!venue) return; // User cancelled, stop here
+                            
                             const date = prompt('Date (YYYY-MM-DD)?');
-                            if (!title || !venue || !date) return;
+                            if (!date) return; // User cancelled, stop here
+                            
                             try {
                               const res = await fetch('http://localhost:5001/api/events', {
                                 method: 'POST',

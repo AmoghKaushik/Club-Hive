@@ -19,8 +19,8 @@ module.exports = (sequelize, DataTypes) => {
         'Treasurer', 
         'HR Head', 
         'PR Head', 
-        'Managing Committee', 
-        'Working Committee', 
+        'Managing Committee',
+        'Working Committee',
         'Volunteer',
         'Other'
       ),
