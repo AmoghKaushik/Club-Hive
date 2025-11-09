@@ -107,10 +107,29 @@ export default function MyClubs({ token }) {
                         className="manage-btn"
                         onClick={async () => {
                           const title = prompt('Event title?');
+                          if (title === null) return; // User cancelled, stop here
+                          if (!title.trim()) {
+                            alert('Event title is required!');
+                            return;
+                          }
+                          
                           const description = prompt('Description?');
+                          if (description === null) return; // User cancelled, stop here
+                          
                           const venue = prompt('Venue?');
+                          if (venue === null) return; // User cancelled, stop here
+                          if (!venue.trim()) {
+                            alert('Venue is required!');
+                            return;
+                          }
+                          
                           const date = prompt('Date (YYYY-MM-DD)?');
-                          if (!title || !venue || !date) return;
+                          if (date === null) return; // User cancelled, stop here
+                          if (!date.trim()) {
+                            alert('Date is required!');
+                            return;
+                          }
+                          
                           try {
                             const res = await fetch('http://localhost:5001/api/events', {
                               method: 'POST',

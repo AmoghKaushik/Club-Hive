@@ -391,7 +391,11 @@ function App() {
                   <h3>Admin: Manage Clubs</h3>
                   <button onClick={async () => {
                     const name = prompt('Club name?');
-                    if (!name) return; // User cancelled, stop here
+                    if (name === null) return; // User cancelled, stop here
+                    if (!name.trim()) {
+                      alert('Club name is required!');
+                      return;
+                    }
                     
                     const description = prompt('Description?');
                     if (description === null) return; // User cancelled, stop here
@@ -500,16 +504,28 @@ function App() {
                         <>
                           <button style={{marginLeft:0}} onClick={async () => {
                             const title = prompt('Event title?');
-                            if (!title) return; // User cancelled, stop here
+                            if (title === null) return; // User cancelled, stop here
+                            if (!title.trim()) {
+                              alert('Event title is required!');
+                              return;
+                            }
                             
                             const description = prompt('Description?');
                             if (description === null) return; // User cancelled, stop here
                             
                             const venue = prompt('Venue?');
-                            if (!venue) return; // User cancelled, stop here
+                            if (venue === null) return; // User cancelled, stop here
+                            if (!venue.trim()) {
+                              alert('Venue is required!');
+                              return;
+                            }
                             
                             const date = prompt('Date (YYYY-MM-DD)?');
-                            if (!date) return; // User cancelled, stop here
+                            if (date === null) return; // User cancelled, stop here
+                            if (!date.trim()) {
+                              alert('Date is required!');
+                              return;
+                            }
                             
                             try {
                               const res = await fetch('http://localhost:5001/api/events', {
