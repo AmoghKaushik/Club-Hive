@@ -8,12 +8,12 @@ services:
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://localhost:5000
+      - VITE_API_URL=http://localhost:5001
 
   backend:
     build: ./backend
     ports:
-      - "5000:5000"
+      - "5001:5000"
     depends_on:
       - postgres
       - redis
@@ -26,7 +26,7 @@ services:
       - JWT_SECRET=your_jwt_secret_key
 
   postgres:
-    image: postgres:latest
+    image: postgres:16-alpine
     ports:
       - "5432:5432"
     environment:

@@ -5,6 +5,9 @@ import './App.css';
 import LoginPage from './LoginPage.jsx';
 import RegisterPage from './RegisterPage.jsx';
 import { useRouter } from './router.jsx';
+import MyClubs from './components/MyClubs.jsx';
+import EventsList from './components/EventsList.jsx';
+import Leaderboard from './components/Leaderboard.jsx';
 
 function App() {
   const [token, setToken] = useState('');
@@ -15,6 +18,7 @@ function App() {
   const [pendingRequests, setPendingRequests] = useState({}); // clubId -> array
   const [users, setUsers] = useState([]);
   const [showUsers, setShowUsers] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'clubs', 'events', 'leaderboard'
   const { route, navigate } = useRouter();
 
   // Fetch all users (admin only)
@@ -149,237 +153,208 @@ function App() {
         </>
       ) : (
         <div style={{marginBottom:16}}>
-          <div className="role-label">Welcome, {user?.name} ({user?.email})</div>
-          <div className="role-label"><b>Role:</b> {user.role}</div>
-          <div className="button-row">
-            <button onClick={fetchClubs}>Show Clubs</button>
-            <button onClick={fetchEvents}>Show Events</button>
-            <button className="danger" onClick={()=>{setToken('');setUser(null);setClubs([]);setEvents([]);navigate('/login')}}>Logout</button>
+          <div className="welcome-header">
+            <div>
+              <div className="role-label">Welcome, <strong>{user?.name}</strong></div>
+              <div className="user-email">{user?.email}</div>
+            </div>
+            <button className="danger logout-btn" onClick={()=>{setToken('');setUser(null);setClubs([]);setEvents([]);setActiveTab('dashboard');navigate('/login')}}>Logout</button>
+          </div>
+          
+          {/* Navigation Tabs */}
+          <div className="tab-navigation">
+            <button 
+              className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              🏠 Dashboard
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'clubs' ? 'active' : ''}`}
+              onClick={() => setActiveTab('clubs')}
+            >
+              🏛️ Clubs
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'events' ? 'active' : ''}`}
+              onClick={() => setActiveTab('events')}
+            >
+              📅 Events
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('leaderboard')}
+            >
+              🏆 Leaderboard
+            </button>
           </div>
         </div>
       )}
       {user && (
-        <div style={{marginTop: 16}}>
-          <div className="role-label">Role: {user.role}</div>
-          {isAdmin && <div className="info-text">You are an Admin. You can create/manage clubs and approve requests.</div>}
-          {isClubHead && <div className="info-text">You are a Club Head. You can manage your club and events.</div>}
-          {isMember && <div className="info-text">You are a Student Member. You can join clubs and RSVP to events.</div>}
-        </div>
-      )}
-      {isAdmin && (
-        <div style={{marginTop: 24}}>
-          <h3>Create a New Club</h3>
-          <form onSubmit={async e => {
-            e.preventDefault();
-            setError('');
-            const name = prompt('Club name?');
-            const description = prompt('Description?');
-            if (!name) return;
-            try {
-              const res = await fetch('http://localhost:5000/api/clubs', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ name, description })
-              });
-              if (!res.ok) throw new Error('Failed to create club');
-              fetchClubs();
-            } catch (err) {
-              setError('Could not create club');
-            }
-          }}>
-            <button type="submit">Create Club</button>
-          </form>
-          <div style={{marginTop:24}}>
-            <button onClick={() => { setShowUsers(v => !v); if (!showUsers) fetchUsers(); }}>
-              {showUsers ? 'Hide Users' : 'Promote User to Club Head'}
-            </button>
-            {showUsers && (
-              <div className="pending-box">
-                <b>All Users:</b>
-                <ul>
-                  {users.length === 0 && <li>No users found</li>}
-                  {users.map(u => (
-                    <li key={u.id}>
-                      {u.name} ({u.email}) - {u.role}
-                      <button style={{marginLeft:8}} onClick={() => handleAssignClubRole(u.id)}>Assign Club Head (per club)</button>
-                    </li>
-                  ))}
-                </ul>
+        <div className="tab-content">
+          {/* Dashboard Tab */}
+          {activeTab === 'dashboard' && (
+            <div className="dashboard-tab">
+              <div className="user-role-card">
+                <h3>Your Role</h3>
+                <div className="role-badge-large">{user.role.replace('_', ' ').toUpperCase()}</div>
+                {isAdmin && <p>You are an Admin. You can create/manage clubs and approve requests.</p>}
+                {isClubHead && <p>You are a Club Head. You can manage your club and events.</p>}
+                {isMember && <p>You are a Student Member. You can join clubs and RSVP to events.</p>}
               </div>
-            )}
-          </div>
-        </div>
-      )}
-      {isMember && clubs.length > 0 && (
-        <div style={{marginTop: 24}}>
-          <h3>Request to Join a Club</h3>
-          <ul className="club-list">
-            {clubs.map(c => (
-              <li key={c.id}>
-                {c.name} <button onClick={async () => {
-                  setError('');
-                  try {
-                    const res = await fetch(`http://localhost:5000/api/clubs/${c.id}/join`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      }
-                    });
-                    if (!res.ok) throw new Error('Failed to request join');
-                    alert('Join request sent!');
-                  } catch (err) {
-                    setError('Could not send join request');
-                  }
-                }}>Request to Join</button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {clubs.length > 0 && user && (
-        <div style={{marginTop: 24}}>
-          <h3>Manage Club Events (Demo)</h3>
-          <ul className="club-list">
-            {clubs.map(c => {
-              // Only show pending requests if user is club_head for this club
-              let isClubHeadForClub = false;
-              if (c.Users && user) {
-                isClubHeadForClub = c.Users.some(u => u.id === user.id && u.ClubMembership?.role === 'club_head' && u.ClubMembership?.status === 'approved');
-              }
-              return (
-                <li key={c.id}>
-                  {c.name} <button onClick={async () => {
-                    setError('');
-                    const title = prompt('Event title?');
+
+              <MyClubs token={token} />
+              
+              <div className="quick-stats">
+                <h3>Quick Actions</h3>
+                <div className="button-row">
+                  <button onClick={() => setActiveTab('clubs')}>Browse Clubs</button>
+                  <button onClick={() => setActiveTab('events')}>View Events</button>
+                  <button onClick={() => setActiveTab('leaderboard')}>See Rankings</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Clubs Tab */}
+          {activeTab === 'clubs' && (
+            <div className="clubs-tab">
+              {isAdmin && (
+                <div className="admin-section">
+                  <h3>Admin: Create Club</h3>
+                  <button onClick={async () => {
+                    const name = prompt('Club name?');
                     const description = prompt('Description?');
-                    const venue = prompt('Venue?');
-                    const date = prompt('Date (YYYY-MM-DD)?');
-                    if (!title || !venue || !date) return;
+                    if (!name) return;
                     try {
-                      const res = await fetch('http://localhost:5000/api/events', {
+                      const res = await fetch('http://localhost:5001/api/clubs', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
                           'Authorization': `Bearer ${token}`
                         },
-                        body: JSON.stringify({ title, description, venue, date, ClubId: c.id })
+                        body: JSON.stringify({ name, description })
                       });
-                      if (!res.ok) throw new Error('Failed to create event');
-                      fetchEvents();
+                      if (!res.ok) throw new Error('Failed to create club');
+                      fetchClubs();
+                      alert('Club created successfully!');
                     } catch (err) {
-                      setError('Could not create event');
+                      setError('Could not create club');
                     }
-                  }}>Create Event</button>
-                  {isClubHeadForClub && (
-                    <button style={{marginLeft:8}} onClick={() => fetchPending(c.id)}>Show Pending Requests</button>
-                  )}
-                  {isClubHeadForClub && pendingRequests[c.id] && (
+                  }}>+ Create New Club</button>
+
+                  <button style={{marginLeft:8}} onClick={() => { setShowUsers(v => !v); if (!showUsers) fetchUsers(); }}>
+                    {showUsers ? 'Hide' : 'Manage User Roles'}
+                  </button>
+
+                  {showUsers && (
                     <div className="pending-box">
-                      <b>Pending Join Requests:</b>
+                      <b>All Users:</b>
                       <ul>
-                        {pendingRequests[c.id].length === 0 && <li>No pending requests</li>}
-                        {pendingRequests[c.id].map(req => (
-                          <li key={req.id}>
-                            {req.User?.name} ({req.User?.email})
-                            <button className="success" style={{marginLeft:8}} onClick={() => handleMembership(c.id, req.userId, 'approved')}>Approve</button>
-                            <button className="danger" style={{marginLeft:4}} onClick={() => handleMembership(c.id, req.userId, 'rejected')}>Reject</button>
+                        {users.length === 0 && <li>No users found</li>}
+                        {users.map(u => (
+                          <li key={u.id}>
+                            {u.name} ({u.email}) - {u.role}
+                            <button style={{marginLeft:8}} onClick={() => handleAssignClubRole(u.id)}>Assign Club Role</button>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-      {isMember && events.length > 0 && (
-        <div style={{marginTop: 24}}>
-          <h3>RSVP to Events</h3>
-          <ul className="event-list">
-            {events.map(e => (
-              <li key={e.id}>
-                {e.title} <button onClick={async () => {
-                  setError('');
-                  try {
-                    const res = await fetch(`http://localhost:5000/api/events/${e.id}/rsvp`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      }
-                    });
-                    if (!res.ok) throw new Error('Failed to RSVP');
-                    alert('RSVP successful!');
-                  } catch (err) {
-                    setError('Could not RSVP');
-                  }
-                }}>RSVP</button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {clubs.length > 0 && (
-        <div style={{marginTop:24}}>
-          <h2>Clubs</h2>
-          <ul className="club-list">
-            {clubs.map(c=>(<li key={c.id}>{c.name} <span style={{color:'#888'}}>- {c.description}</span></li>))}
-          </ul>
-        </div>
-      )}
-      {events.length > 0 && (
-        <div style={{marginTop:24}}>
-          <h2>Events</h2>
-          <ul className="event-list">
-            {events.map(e=>(<li key={e.id}>{e.title} <span style={{color:'#888'}}>- {e.venue} ({e.date})</span></li>))}
-          </ul>
-        </div>
-      )}
-      {user && (
-        <div style={{marginTop: 32}}>
-          <h2>Leaderboard</h2>
-          <button onClick={async () => {
-            setError('');
-            try {
-              const res = await fetch('http://localhost:5000/api/leaderboard', {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              if (!res.ok) throw new Error('Failed to fetch leaderboard');
-              const data = await res.json();
-              alert('Top 10 Users:\n' + data.map((u, i) => `${i+1}. ${u.name} (${u.points} pts)`).join('\n'));
-            } catch (err) {
-              setError('Could not fetch leaderboard');
-            }
-          }}>Show Leaderboard</button>
-        </div>
-      )}
-      {isAdmin && (
-        <div style={{marginTop: 32}}>
-          <h2>Export Reports</h2>
-          <button onClick={async () => {
-            setError('');
-            try {
-              const res = await fetch('http://localhost:5000/api/reports/participation', {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              if (!res.ok) throw new Error('Failed to fetch report');
-              const blob = await res.blob();
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'participation_report.csv';
-              a.click();
-              window.URL.revokeObjectURL(url);
-            } catch (err) {
-              setError('Could not export report');
-            }
-          }}>Export Participation Report (CSV)</button>
+                </div>
+              )}
+
+              <h2>All Clubs</h2>
+              <button onClick={fetchClubs} style={{marginBottom:16}}>Refresh Clubs</button>
+              {clubs.length === 0 ? (
+                <div className="empty-state"><p>No clubs available. {isAdmin && 'Create one above!'}</p></div>
+              ) : (
+                <ul className="club-list">
+                  {clubs.map(c => (
+                    <li key={c.id}>
+                      <h3>{c.name}</h3>
+                      <p style={{color:'#888'}}>{c.description}</p>
+                      {isMember && (
+                        <button onClick={async () => {
+                          try {
+                            const res = await fetch(`http://localhost:5001/api/clubs/${c.id}/join`, {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                              }
+                            });
+                            if (!res.ok) throw new Error('Failed to request join');
+                            alert('Join request sent!');
+                          } catch (err) {
+                            setError('Could not send join request');
+                          }
+                        }}>Request to Join</button>
+                      )}
+                      {(isAdmin || isClubHead) && (
+                        <>
+                          <button style={{marginLeft:8}} onClick={async () => {
+                            const title = prompt('Event title?');
+                            const description = prompt('Description?');
+                            const venue = prompt('Venue?');
+                            const date = prompt('Date (YYYY-MM-DD)?');
+                            if (!title || !venue || !date) return;
+                            try {
+                              const res = await fetch('http://localhost:5001/api/events', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify({ title, description, venue, date, ClubId: c.id })
+                              });
+                              if (!res.ok) throw new Error('Failed to create event');
+                              alert('Event created!');
+                              setActiveTab('events');
+                            } catch (err) {
+                              setError('Could not create event');
+                            }
+                          }}>Create Event</button>
+                          <button style={{marginLeft:8}} onClick={() => fetchPending(c.id)}>
+                            Manage Requests
+                          </button>
+                        </>
+                      )}
+                      {pendingRequests[c.id] && (
+                        <div className="pending-box">
+                          <b>Pending Join Requests:</b>
+                          <ul>
+                            {pendingRequests[c.id].length === 0 && <li>No pending requests</li>}
+                            {pendingRequests[c.id].map(req => (
+                              <li key={req.id}>
+                                {req.User?.name} ({req.User?.email})
+                                <button className="success" style={{marginLeft:8}} onClick={() => handleMembership(c.id, req.userId, 'approved')}>Approve</button>
+                                <button className="danger" style={{marginLeft:4}} onClick={() => handleMembership(c.id, req.userId, 'rejected')}>Reject</button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Events Tab */}
+          {activeTab === 'events' && (
+            <div className="events-tab">
+              <EventsList token={token} user={user} />
+            </div>
+          )}
+
+          {/* Leaderboard Tab */}
+          {activeTab === 'leaderboard' && (
+            <div className="leaderboard-tab">
+              <Leaderboard token={token} user={user} />
+            </div>
+          )}
         </div>
       )}
     </div>

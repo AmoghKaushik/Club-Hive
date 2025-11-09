@@ -119,4 +119,24 @@ router.put('/:clubId/membership/:userId', [auth, checkRole(['admin', 'club_head'
   }
 });
 
+// Get user's clubs (my clubs)
+router.get('/my-clubs', auth, async (req, res) => {
+  try {
+    const memberships = await ClubMembership.findAll({
+      where: { userId: req.user.id },
+      include: [
+        {
+          model: Club,
+          attributes: ['id', 'name', 'description', 'status']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(memberships);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

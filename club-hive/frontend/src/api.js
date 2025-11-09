@@ -56,7 +56,7 @@ export async function updateMembershipStatus(clubId, userId, status, token) {
   return res.json();
 }
 // Simple API utility for Club Hive frontend
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 
 export async function login(email, password) {
   const res = await fetch(`${API_BASE}/auth/login`, {
@@ -99,5 +99,21 @@ export async function getEvents(token) {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Failed to fetch events');
+  return res.json();
+}
+
+export async function getMyClubs(token) {
+  const res = await fetch(`${API_BASE}/clubs/my-clubs`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch my clubs');
+  return res.json();
+}
+
+export async function getLeaderboard(token) {
+  const res = await fetch(`${API_BASE}/leaderboard`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch leaderboard');
   return res.json();
 }
