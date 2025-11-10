@@ -12,6 +12,8 @@ import ManageMembers from './components/ManageMembers.jsx';
 import ClubSelector from './components/ClubSelector.jsx';
 import EventForm from './components/EventForm.jsx';
 import ClubForm from './components/ClubForm.jsx';
+import NotificationBell from './components/NotificationBell.jsx';
+import Announcements from './components/Announcements.jsx';
 
 function App() {
   const [token, setToken] = useState(() => {
@@ -317,7 +319,10 @@ function App() {
               <div className="role-label">Welcome, <strong>{user?.name}</strong></div>
               <div className="user-email">{user?.email}</div>
             </div>
-            <button className="danger logout-btn" onClick={()=>{setToken('');setUser(null);setClubs([]);setEvents([]);setActiveTab('dashboard');navigate('/login')}}>Logout</button>
+            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+              <NotificationBell token={token} />
+              <button className="danger logout-btn" onClick={()=>{setToken('');setUser(null);setClubs([]);setEvents([]);setActiveTab('dashboard');navigate('/login')}}>Logout</button>
+            </div>
           </div>
           
           {/* Navigation Tabs */}
@@ -342,6 +347,12 @@ function App() {
               onClick={() => setActiveTab('events')}
             >
               📅 Events
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`}
+              onClick={() => setActiveTab('announcements')}
+            >
+              📢 Announcements
             </button>
             <button 
               className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
@@ -525,6 +536,13 @@ function App() {
           {activeTab === 'events' && (
             <div className="events-tab">
               <EventsList token={token} user={user} />
+            </div>
+          )}
+
+          {/* Announcements Tab */}
+          {activeTab === 'announcements' && (
+            <div className="announcements-tab">
+              <Announcements token={token} user={user} />
             </div>
           )}
 

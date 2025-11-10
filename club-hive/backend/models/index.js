@@ -18,6 +18,8 @@ const db = {
   Event: require('./Event')(sequelize, Sequelize),
   ClubMembership: require('./ClubMembership')(sequelize, Sequelize),
   EventParticipation: require('./EventParticipation')(sequelize, Sequelize),
+  Announcement: require('./Announcement')(sequelize, Sequelize),
+  Notification: require('./Notification')(sequelize, Sequelize),
 };
 
 // Associations
@@ -36,5 +38,15 @@ db.Event.belongsToMany(db.User, { through: db.EventParticipation });
 // Add direct associations for eager loading
 db.EventParticipation.belongsTo(db.User, { foreignKey: 'UserId' });
 db.EventParticipation.belongsTo(db.Event, { foreignKey: 'EventId' });
+
+// Announcement associations
+db.Announcement.belongsTo(db.Club, { foreignKey: 'clubId', as: 'club' });
+db.Announcement.belongsTo(db.User, { foreignKey: 'createdBy', as: 'author' });
+db.Club.hasMany(db.Announcement, { foreignKey: 'clubId' });
+db.User.hasMany(db.Announcement, { foreignKey: 'createdBy' });
+
+// Notification associations
+db.Notification.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
+db.User.hasMany(db.Notification, { foreignKey: 'userId' });
 
 module.exports = db;

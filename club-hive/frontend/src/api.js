@@ -247,3 +247,101 @@ export async function markAttendance(eventId, userId, status, token) {
   }
   return res.json();
 }
+
+// ============= ANNOUNCEMENTS =============
+
+// Create announcement
+export async function createAnnouncement(title, content, clubId, token) {
+  const res = await fetch(`${API_BASE}/announcements`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ title, content, clubId })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to create announcement');
+  }
+  return res.json();
+}
+
+// Get all announcements for current user
+export async function getAnnouncements(token, limit = 50, offset = 0) {
+  const res = await fetch(`${API_BASE}/announcements?limit=${limit}&offset=${offset}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch announcements');
+  return res.json();
+}
+
+// Get club-specific announcements
+export async function getClubAnnouncements(clubId, token) {
+  const res = await fetch(`${API_BASE}/announcements/club/${clubId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch club announcements');
+  return res.json();
+}
+
+// Delete announcement
+export async function deleteAnnouncement(announcementId, token) {
+  const res = await fetch(`${API_BASE}/announcements/${announcementId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to delete announcement');
+  return res.json();
+}
+
+// ============= NOTIFICATIONS =============
+
+// Get notifications for current user
+export async function getNotifications(token, unreadOnly = false, limit = 50, offset = 0) {
+  const url = `${API_BASE}/notifications?unreadOnly=${unreadOnly}&limit=${limit}&offset=${offset}`;
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch notifications');
+  return res.json();
+}
+
+// Get unread notification count
+export async function getUnreadCount(token) {
+  const res = await fetch(`${API_BASE}/notifications/unread-count`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch unread count');
+  return res.json();
+}
+
+// Mark notification as read
+export async function markNotificationRead(notificationId, token) {
+  const res = await fetch(`${API_BASE}/notifications/${notificationId}/read`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to mark notification as read');
+  return res.json();
+}
+
+// Mark all notifications as read
+export async function markAllNotificationsRead(token) {
+  const res = await fetch(`${API_BASE}/notifications/mark-all-read`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to mark all notifications as read');
+  return res.json();
+}
+
+// Delete notification
+export async function deleteNotification(notificationId, token) {
+  const res = await fetch(`${API_BASE}/notifications/${notificationId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to delete notification');
+  return res.json();
+}
