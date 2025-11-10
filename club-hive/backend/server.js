@@ -31,7 +31,7 @@ const PORT = process.env.PORT || 5000;
 async function startServer() {
   try {
     // In development, sync models to the database. For production, use migrations instead.
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
     console.log('Database synced successfully');
 
     app.listen(PORT, () => {

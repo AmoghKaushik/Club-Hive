@@ -6,6 +6,9 @@ router.get('/', async (req, res) => {
   try {
     const users = await User.findAll({
       attributes: ['id', 'name', 'email', 'points'],
+      where: {
+        role: { [require('sequelize').Op.ne]: 'admin' } // Exclude admins
+      },
       order: [['points', 'DESC']],
       limit: 50 // Top 50 users
     });
