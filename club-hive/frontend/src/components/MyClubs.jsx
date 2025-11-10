@@ -84,6 +84,13 @@ export default function MyClubs({ token, onCreateEvent }) {
           <div className="clubs-grid">
             {myClubs.map((membership) => {
               const club = membership.Club;
+              
+              // Safety check - skip if club data is missing
+              if (!club) {
+                console.warn('Membership missing club data:', membership);
+                return null;
+              }
+              
               const status = getStatusBadge(membership.status);
               const role = getRoleBadge(membership.role, membership.roleName);
               const isBoard = membership.role === 'board' && membership.status === 'approved';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getLeaderboard } from '../api';
 import './Leaderboard.css';
 
@@ -12,13 +12,16 @@ export default function Leaderboard({ token, user }) {
   }, [token]);
 
   async function fetchLeaderboard() {
+    console.log('fetchLeaderboard called with token:', token);
     setLoading(true);
     setError('');
     try {
       const data = await getLeaderboard(token);
+      console.log('Leaderboard data received:', data);
       // Ensure data is an array
       if (Array.isArray(data)) {
         setLeaderboard(data);
+        console.log('Leaderboard state updated with:', data);
       } else {
         console.error('Invalid leaderboard data:', data);
         setLeaderboard([]);
@@ -33,26 +36,38 @@ export default function Leaderboard({ token, user }) {
     }
   }
 
-  const userRank = leaderboard.findIndex(u => u.id === user?.id) + 1;
-  const userEntry = leaderboard.find(u => u.id === user?.id);
-  const userPoints = userEntry?.points || 0;
-  
-  // Calculate points needed for next rank
-  let pointsToNextRank = 0;
-  if (userRank > 0 && userRank <= leaderboard.length) {
-    if (userRank === 1) {
-      // Already rank 1
-      pointsToNextRank = 0;
-    } else {
-      const nextRankUser = leaderboard[userRank - 2]; // Person above in ranking
-      if (nextRankUser.points === userPoints) {
-        // Tied with next rank
-        pointsToNextRank = 1;
+  // Calculate user stats (recalculates when leaderboard changes)
+  const userStats = useMemo(() => {
+    console.log('Calculating userStats. Leaderboard:', leaderboard);
+    console.log('Current user:', user);
+    
+    const userRank = leaderboard.findIndex(u => u.id === user?.id) + 1;
+    const userEntry = leaderboard.find(u => u.id === user?.id);
+    const userPoints = userEntry?.points || 0;
+    
+    console.log('userRank:', userRank, 'userEntry:', userEntry, 'userPoints:', userPoints);
+    
+    // Calculate points needed for next rank
+    let pointsToNextRank = 0;
+    if (userRank > 0 && userRank <= leaderboard.length) {
+      if (userRank === 1) {
+        // Already rank 1
+        pointsToNextRank = 0;
       } else {
-        pointsToNextRank = nextRankUser.points - userPoints + 1;
+        const nextRankUser = leaderboard[userRank - 2]; // Person above in ranking
+        if (nextRankUser.points === userPoints) {
+          // Tied with next rank
+          pointsToNextRank = 1;
+        } else {
+          pointsToNextRank = nextRankUser.points - userPoints + 1;
+        }
       }
     }
-  }
+    
+    console.log('Final stats:', { userRank, userPoints, pointsToNextRank });
+    
+    return { userRank, userPoints, pointsToNextRank };
+  }, [leaderboard, user?.id]);
 
   if (loading) return <div className="loading">Loading leaderboard...</div>;
 
@@ -65,16 +80,16 @@ export default function Leaderboard({ token, user }) {
         <div className="user-stats">
           <div className="stat-card">
             <div className="stat-label">Your Rank</div>
-            <div className="stat-value">{userRank > 0 ? `#${userRank}` : 'N/A'}</div>
+            <div className="stat-value">{userStats.userRank > 0 ? `#${userStats.userRank}` : 'N/A'}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Your Points</div>
-            <div className="stat-value">{userPoints}</div>
+            <div className="stat-value">{userStats.userPoints}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Next Rank</div>
             <div className="stat-value">
-              {userRank === 1 ? '👑' : pointsToNextRank === 0 ? 'N/A' : `+${pointsToNextRank}`}
+              {userStats.userRank === 1 ? '👑' : userStats.pointsToNextRank === 0 ? 'N/A' : `+${userStats.pointsToNextRank}`}
             </div>
           </div>
         </div>

@@ -27,13 +27,15 @@
 
 .stat-label {
   font-size: 0.9rem;
-  opacity: 0.9;
+  color: #333333;
   margin-bottom: 8px;
+  font-weight: 500;
 }
 
 .stat-value {
   font-size: 2rem;
   font-weight: 700;
+  color: #1a1a1a !important;
 }
 
 .leaderboard-list {

@@ -352,32 +352,37 @@ router.get('/member/:userId', auth, async (req, res) => {
     }
 
     // Clubs participated in
-    const clubs = await Club.findAll({
-      attributes: ['id', 'name'],
+    const memberships = await ClubMembership.findAll({
+      where: { userId, status: 'approved' },
       include: [{
-        model: ClubMembership,
-        where: { userId, status: 'approved' },
-        attributes: []
-      }]
+        model: Club,
+        attributes: ['id', 'name']
+      }],
+      attributes: []
     });
+    const clubs = memberships.map(m => m.Club);
 
     // Recent events attended
-    const recentEvents = await Event.findAll({
-      attributes: ['id', 'title', 'date', 'points'],
-      include: [
-        {
-          model: EventParticipation,
-          where: { UserId: userId, status: 'attended' },
-          attributes: []
-        },
-        {
+    const participations = await EventParticipation.findAll({
+      where: { UserId: userId, status: 'attended' },
+      include: [{
+        model: Event,
+        attributes: ['id', 'title', 'date', 'points'],
+        include: [{
           model: Club,
           attributes: ['name']
-        }
-      ],
-      order: [['date', 'DESC']],
+        }]
+      }],
+      order: [['updatedAt', 'DESC']],
       limit: 5
     });
+    const recentEvents = participations.map(p => ({
+      id: p.Event.id,
+      title: p.Event.title,
+      date: p.Event.date,
+      points: p.Event.points,
+      Club: p.Event.Club
+    }));
 
     res.json({
       user: {

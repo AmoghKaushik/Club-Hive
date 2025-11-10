@@ -1,10 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './Analytics.css';
 
 const API_BASE = 'http://localhost:5001/api';
 
 const Analytics = () => {
-  const [activeTab, setActiveTab] = useState('system');
+  let currentUser = null;
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      currentUser = JSON.parse(userStr);
+    }
+  } catch (error) {
+    console.error('Failed to parse user from localStorage:', error);
+    currentUser = null;
+  }
+  
+  const isAdmin = currentUser?.role === 'admin';
+  const isFirstRender = useRef(true);
+  
+  console.log('Analytics component loaded. User:', currentUser, 'isAdmin:', isAdmin);
+  
+  // Set default tab based on user role
+  const defaultTab = isAdmin ? 'system' : 'club';
+  console.log('Default tab should be:', defaultTab);
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [systemAnalytics, setSystemAnalytics] = useState(null);
   const [clubAnalytics, setClubAnalytics] = useState(null);
   const [eventAnalytics, setEventAnalytics] = useState(null);
@@ -18,9 +37,6 @@ const Analytics = () => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const currentUser = JSON.parse(localStorage.getItem('user'));
-  const isAdmin = currentUser?.role === 'admin';
   
   // Check if user is a board member of any club
   const [isBoardMember, setIsBoardMember] = useState(false);
@@ -178,22 +194,47 @@ const Analytics = () => {
     }
   };
 
+  // Combined effect for initial load and tab changes
   useEffect(() => {
-    if (isAdmin && activeTab === 'system') {
-      fetchSystemAnalytics();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    fetchClubs();
-    fetchEvents();
+    console.log('=== MAIN useEffect RUNNING ===');
+    console.log('isFirstRender:', isFirstRender.current);
+    console.log('activeTab:', activeTab);
+    console.log('isAdmin:', isAdmin);
+    console.log('currentUser:', currentUser);
     
-    // Fetch user's own analytics by default
-    if (activeTab === 'member') {
-      fetchMemberAnalytics(currentUser.id);
-      setSelectedMember(currentUser.id);
+    // Safety check - if no user, don't proceed
+    if (!currentUser) {
+      console.error('No currentUser found - cannot fetch analytics');
+      setError('Please login to view analytics');
+      return;
     }
-  }, []);
+    
+    // On first render, fetch clubs and events
+    if (isFirstRender.current) {
+      console.log('First render - fetching clubs and events');
+      fetchClubs();
+      fetchEvents();
+      isFirstRender.current = false;
+    }
+    
+    // Always handle the active tab
+    if (activeTab === 'system' && isAdmin) {
+      console.log('>>>Fetching system analytics...');
+      fetchSystemAnalytics();
+    } else if (activeTab === 'member') {
+      console.log('>>>Should fetch member analytics');
+      if (currentUser?.id) {
+        console.log('>>>Actually calling fetchMemberAnalytics for:', currentUser.id);
+        fetchMemberAnalytics(currentUser.id);
+        setSelectedMember(currentUser.id);
+      } else {
+        console.error('>>>No currentUser.id available!');
+      }
+    } else {
+      console.log('>>>Tab is:', activeTab, '- no auto-fetch');
+    }
+    console.log('=== END useEffect ===');
+  }, [activeTab]);
 
   return (
     <div className="analytics-container">
@@ -223,7 +264,10 @@ const Analytics = () => {
         </button>
         <button
           className={activeTab === 'member' ? 'tab-active' : ''}
-          onClick={() => setActiveTab('member')}
+          onClick={() => {
+            console.log('Member Analytics button clicked, setting activeTab to member');
+            setActiveTab('member');
+          }}
         >
           Member Analytics
         </button>
@@ -643,7 +687,7 @@ const Analytics = () => {
                 <h3>My Clubs</h3>
                 <ul>
                   {memberAnalytics.clubs?.map((club) => (
-                    <li key={club.id}>{club.name}</li>
+                    club ? <li key={club.id}>{club.name}</li> : null
                   ))}
                 </ul>
               </div>
