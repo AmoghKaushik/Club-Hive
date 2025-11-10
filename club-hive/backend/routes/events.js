@@ -199,4 +199,78 @@ router.get('/:eventId/participants', auth, async (req, res) => {
   }
 });
 
+// Mark attendance for event participants (Admin or Board members)
+router.put('/:eventId/attendance', auth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { userId, status } = req.body; // status: 'attended', 'absent', or 'registered'
+    
+    if (!['attended', 'absent', 'registered'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be "attended", "absent", or "registered"' });
+    }
+    
+    // Get the event to check which club it belongs to
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Check if user is admin or board member of the club
+    if (req.user.role !== 'admin') {
+      const membership = await ClubMembership.findOne({
+        where: {
+          clubId: event.ClubId,
+          userId: req.user.id,
+          role: 'board',
+          status: 'approved'
+        }
+      });
+      
+      if (!membership) {
+        return res.status(403).json({ message: 'Forbidden: Only board members can mark attendance' });
+      }
+    }
+    
+    // Find the participation record
+    const participation = await EventParticipation.findOne({
+      where: { EventId: eventId, UserId: userId }
+    });
+    
+    if (!participation) {
+      return res.status(404).json({ message: 'Participant not found' });
+    }
+    
+    const previousStatus = participation.status;
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Handle points based on status changes
+    const eventPoints = event.points || 10;
+    
+    // If changing from attended to absent or registered, remove points
+    if (previousStatus === 'attended' && status !== 'attended') {
+      user.points = Math.max(0, (user.points || 0) - eventPoints);
+      await user.save();
+    }
+    
+    // If changing to attended from any other status, add points
+    if (status === 'attended' && previousStatus !== 'attended') {
+      user.points = (user.points || 0) + eventPoints;
+      await user.save();
+    }
+    
+    // Update the status
+    participation.status = status;
+    await participation.save();
+    
+    res.json({ message: 'Attendance marked successfully', participation });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

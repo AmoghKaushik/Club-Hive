@@ -34,7 +34,25 @@ export default function Leaderboard({ token, user }) {
   }
 
   const userRank = leaderboard.findIndex(u => u.id === user?.id) + 1;
-  const userPoints = user?.points || 0;
+  const userEntry = leaderboard.find(u => u.id === user?.id);
+  const userPoints = userEntry?.points || 0;
+  
+  // Calculate points needed for next rank
+  let pointsToNextRank = 0;
+  if (userRank > 0 && userRank <= leaderboard.length) {
+    if (userRank === 1) {
+      // Already rank 1
+      pointsToNextRank = 0;
+    } else {
+      const nextRankUser = leaderboard[userRank - 2]; // Person above in ranking
+      if (nextRankUser.points === userPoints) {
+        // Tied with next rank
+        pointsToNextRank = 1;
+      } else {
+        pointsToNextRank = nextRankUser.points - userPoints + 1;
+      }
+    }
+  }
 
   if (loading) return <div className="loading">Loading leaderboard...</div>;
 
@@ -54,8 +72,10 @@ export default function Leaderboard({ token, user }) {
             <div className="stat-value">{userPoints}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Top 10</div>
-            <div className="stat-value">{leaderboard.length >= 10 ? '✓' : leaderboard.length}</div>
+            <div className="stat-label">Next Rank</div>
+            <div className="stat-value">
+              {userRank === 1 ? '👑' : pointsToNextRank === 0 ? 'N/A' : `+${pointsToNextRank}`}
+            </div>
           </div>
         </div>
       )}

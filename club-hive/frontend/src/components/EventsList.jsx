@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getEvents, registerForEvent, unregisterFromEvent, getEventParticipants, checkMyRegistration } from '../api';
+import { getEvents, registerForEvent, unregisterFromEvent, getEventParticipants, checkMyRegistration, markAttendance } from '../api';
 import './EventsList.css';
 
 export default function EventsList({ token, user }) {
@@ -100,6 +100,20 @@ export default function EventsList({ token, user }) {
 
   async function openParticipantsModal(eventId) {
     setViewingParticipants(eventId);
+  }
+
+  async function handleMarkAttendance(eventId, userId, status) {
+    setError('');
+    try {
+      await markAttendance(eventId, userId, status, token);
+      // Refresh participants list
+      const data = await getEventParticipants(eventId, token);
+      setParticipantsData(prev => ({ ...prev, [eventId]: data }));
+      alert(`Attendance marked as ${status}!`);
+    } catch (err) {
+      setError(err.message || 'Failed to mark attendance');
+      alert('Error: ' + (err.message || 'Failed to mark attendance'));
+    }
   }
 
   const now = new Date();
@@ -252,11 +266,36 @@ export default function EventsList({ token, user }) {
                         <span className="participant-name">{p.User?.name || 'Unknown'}</span>
                         <span className="participant-email">{p.User?.email || ''}</span>
                       </div>
-                      <div className="participant-status">
+                      <div className="participant-actions">
                         <span className={`status-badge status-${p.status}`}>
                           {p.status === 'registered' ? '📝 Registered' : 
                            p.status === 'attended' ? '✓ Attended' : '✗ Absent'}
                         </span>
+                        {(isAdmin || registrations[viewingParticipants]?.canManage) && (
+                          <div className="attendance-buttons">
+                            <button 
+                              className="btn-attended"
+                              onClick={() => handleMarkAttendance(viewingParticipants, p.UserId, 'attended')}
+                              disabled={p.status === 'attended'}
+                            >
+                              ✓ Present
+                            </button>
+                            <button 
+                              className="btn-absent"
+                              onClick={() => handleMarkAttendance(viewingParticipants, p.UserId, 'absent')}
+                              disabled={p.status === 'absent'}
+                            >
+                              ✗ Absent
+                            </button>
+                            <button 
+                              className="btn-clear"
+                              onClick={() => handleMarkAttendance(viewingParticipants, p.UserId, 'registered')}
+                              disabled={p.status === 'registered'}
+                            >
+                              ↺ Clear
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

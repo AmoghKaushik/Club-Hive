@@ -231,3 +231,19 @@ export async function checkMyRegistration(eventId, token) {
   return res.json();
 }
 
+// Mark attendance for event participant (board members/admin)
+export async function markAttendance(eventId, userId, status, token) {
+  const res = await fetch(`${API_BASE}/events/${eventId}/attendance`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ userId, status })
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to mark attendance');
+  }
+  return res.json();
+}
