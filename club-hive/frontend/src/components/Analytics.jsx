@@ -20,10 +20,8 @@ const Analytics = () => {
   
   console.log('Analytics component loaded. User:', currentUser, 'isAdmin:', isAdmin);
   
-  // Set default tab based on user role
-  const defaultTab = isAdmin ? 'system' : 'club';
-  console.log('Default tab should be:', defaultTab);
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  // Set default tab based on user role (will be updated by useEffect)
+  const [activeTab, setActiveTab] = useState(isAdmin ? 'system' : 'member');
   const [systemAnalytics, setSystemAnalytics] = useState(null);
   const [clubAnalytics, setClubAnalytics] = useState(null);
   const [eventAnalytics, setEventAnalytics] = useState(null);
@@ -45,6 +43,13 @@ const Analytics = () => {
   useEffect(() => {
     checkBoardMembership();
   }, []);
+
+  // Update default tab when board membership is determined
+  useEffect(() => {
+    if (!isAdmin && isBoardMember && activeTab === 'member') {
+      setActiveTab('club');
+    }
+  }, [isBoardMember, isAdmin]);
 
   const checkBoardMembership = async () => {
     try {
@@ -120,7 +125,7 @@ const Analytics = () => {
     }
   };
 
-  // Fetch member analytics
+  // Fetch user analytics
   const fetchMemberAnalytics = async (userId) => {
     try {
       setLoading(true);
@@ -133,7 +138,7 @@ const Analytics = () => {
       const data = await response.json();
       setMemberAnalytics(data);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to fetch member analytics');
+      setError(err.response?.data?.message || err.message || 'Failed to fetch user analytics');
     } finally {
       setLoading(false);
     }
@@ -222,7 +227,7 @@ const Analytics = () => {
       console.log('>>>Fetching system analytics...');
       fetchSystemAnalytics();
     } else if (activeTab === 'member') {
-      console.log('>>>Should fetch member analytics');
+      console.log('>>>Should fetch user analytics');
       if (currentUser?.id) {
         console.log('>>>Actually calling fetchMemberAnalytics for:', currentUser.id);
         fetchMemberAnalytics(currentUser.id);
@@ -250,27 +255,33 @@ const Analytics = () => {
             System-Wide
           </button>
         )}
-        <button
-          className={activeTab === 'club' ? 'tab-active' : ''}
-          onClick={() => setActiveTab('club')}
-        >
-          Club Analytics
-        </button>
-        <button
-          className={activeTab === 'event' ? 'tab-active' : ''}
-          onClick={() => setActiveTab('event')}
-        >
-          Event Analytics
-        </button>
-        <button
-          className={activeTab === 'member' ? 'tab-active' : ''}
-          onClick={() => {
-            console.log('Member Analytics button clicked, setting activeTab to member');
-            setActiveTab('member');
-          }}
-        >
-          Member Analytics
-        </button>
+        {(isAdmin || isBoardMember) && (
+          <button
+            className={activeTab === 'club' ? 'tab-active' : ''}
+            onClick={() => setActiveTab('club')}
+          >
+            Club Analytics
+          </button>
+        )}
+        {(isAdmin || isBoardMember) && (
+          <button
+            className={activeTab === 'event' ? 'tab-active' : ''}
+            onClick={() => setActiveTab('event')}
+          >
+            Event Analytics
+          </button>
+        )}
+        {!isAdmin && (
+          <button
+            className={activeTab === 'member' ? 'tab-active' : ''}
+            onClick={() => {
+              console.log('User Analytics button clicked, setting activeTab to member');
+              setActiveTab('member');
+            }}
+          >
+            User Analytics
+          </button>
+        )}
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -631,10 +642,10 @@ const Analytics = () => {
         </div>
       )}
 
-      {/* Member Analytics */}
+      {/* User Analytics */}
       {activeTab === 'member' && (
         <div className="analytics-section">
-          <h2>Member Analytics</h2>
+          <h2>User Analytics</h2>
           
           {loading ? (
             <p>Loading...</p>

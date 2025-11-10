@@ -70,7 +70,7 @@
   margin: 0;
 }
 
-.club-header {
+.analytics-section .club-header {
   margin: 30px 0;
   padding: 25px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -79,14 +79,26 @@
   text-align: center;
 }
 
-.club-header h3 {
-  color: white;
+.analytics-section .club-header h3 {
+  color: white !important;
   font-size: 1.8rem;
   margin-bottom: 8px;
 }
 
+.analytics-section .club-header h2 {
+  color: white !important;
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+
+.analytics-section .club-header p,
+.analytics-section .club-header span,
+.analytics-section .club-header strong {
+  color: white !important;
+}
+
 .club-subtitle {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.9) !important;
   margin: 0;
   font-size: 0.95rem;
 }
