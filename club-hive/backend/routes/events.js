@@ -35,7 +35,7 @@ router.get('/', auth, async (req, res) => {
 // Create event (Admin or Board members of that club)
 router.post('/', auth, async (req, res) => {
   try {
-    const { title, description, venue, date, ClubId } = req.body;
+    const { title, description, venue, date, ClubId, points } = req.body;
     
     // Admin can create events for any club
     if (req.user.role !== 'admin') {
@@ -59,6 +59,7 @@ router.post('/', auth, async (req, res) => {
       description,
       venue,
       date,
+      points: points || 10,
       ClubId
     });
     res.json(event);

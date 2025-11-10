@@ -3,7 +3,7 @@ import { getMyClubs, getPendingMemberships, updateMembershipStatus } from '../ap
 import ManageMembers from './ManageMembers';
 import './MyClubs.css';
 
-export default function MyClubs({ token }) {
+export default function MyClubs({ token, onCreateEvent }) {
   const [myClubs, setMyClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -91,7 +91,22 @@ export default function MyClubs({ token }) {
               return (
                 <div key={membership.id} className="club-card">
                   <div className="club-header">
-                    <h3>{club.name}</h3>
+                    <div style={{display:'flex', flexDirection:'column', gap:'4px', flex:1}}>
+                      <h3 style={{margin:0}}>{club.name}</h3>
+                      {club.category && (
+                        <span style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          padding: '3px 10px',
+                          borderRadius: '10px',
+                          fontSize: '0.7rem',
+                          fontWeight: '600',
+                          width: 'fit-content'
+                        }}>
+                          {club.category}
+                        </span>
+                      )}
+                    </div>
                     <span className={status.className}>{status.text}</span>
                   </div>
                   <p className="club-description">{club.description || 'No description available'}</p>
@@ -105,46 +120,7 @@ export default function MyClubs({ token }) {
                     <div style={{marginTop: '12px', display: 'flex', gap: '8px', flexDirection: 'column'}}>
                       <button 
                         className="manage-btn"
-                        onClick={async () => {
-                          const title = prompt('Event title?');
-                          if (title === null) return; // User cancelled, stop here
-                          if (!title.trim()) {
-                            alert('Event title is required!');
-                            return;
-                          }
-                          
-                          const description = prompt('Description?');
-                          if (description === null) return; // User cancelled, stop here
-                          
-                          const venue = prompt('Venue?');
-                          if (venue === null) return; // User cancelled, stop here
-                          if (!venue.trim()) {
-                            alert('Venue is required!');
-                            return;
-                          }
-                          
-                          const date = prompt('Date (YYYY-MM-DD)?');
-                          if (date === null) return; // User cancelled, stop here
-                          if (!date.trim()) {
-                            alert('Date is required!');
-                            return;
-                          }
-                          
-                          try {
-                            const res = await fetch('http://localhost:5001/api/events', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                              },
-                              body: JSON.stringify({ title, description, venue, date, ClubId: club.id })
-                            });
-                            if (!res.ok) throw new Error('Failed to create event');
-                            alert('Event created successfully!');
-                          } catch (err) {
-                            alert('Error: ' + err.message);
-                          }
-                        }}
+                        onClick={() => onCreateEvent && onCreateEvent(club.id, club.name)}
                       >
                         Create Event
                       </button>

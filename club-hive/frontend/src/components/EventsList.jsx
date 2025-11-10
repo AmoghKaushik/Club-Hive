@@ -168,7 +168,16 @@ export default function EventsList({ token, user }) {
                   </div>
                   <div className="event-detail-item">
                     <span className="detail-icon">🕐</span>
-                    <span>{eventDate.toLocaleDateString()} at {eventDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <span>{eventDate.toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric', 
+                      timeZone: 'UTC' 
+                    })} at {eventDate.toLocaleTimeString('en-US', {
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      timeZone: 'UTC'
+                    })}</span>
                   </div>
                   {event.Club && (
                     <div className="event-detail-item">

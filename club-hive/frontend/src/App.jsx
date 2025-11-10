@@ -10,6 +10,8 @@ import EventsList from './components/EventsList.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import ManageMembers from './components/ManageMembers.jsx';
 import ClubSelector from './components/ClubSelector.jsx';
+import EventForm from './components/EventForm.jsx';
+import ClubForm from './components/ClubForm.jsx';
 
 function App() {
   const [token, setToken] = useState(() => {
@@ -30,6 +32,9 @@ function App() {
   const [managingClub, setManagingClub] = useState(null); // { clubId, clubName } for ManageMembers modal
   const [userMemberships, setUserMemberships] = useState([]); // User's club memberships with status
   const [clubSelectorMode, setClubSelectorMode] = useState(null); // 'edit' or 'delete'
+  const [showEventForm, setShowEventForm] = useState(null); // { clubId, clubName } or null
+  const [showClubForm, setShowClubForm] = useState(false); // true/false for create
+  const [editingClub, setEditingClub] = useState(null); // club object for editing
   const { route, navigate } = useRouter();
 
   // Save token and user to localStorage whenever they change
@@ -206,18 +211,7 @@ function App() {
 
   async function onClubSelectedForEdit(club) {
     setClubSelectorMode(null);
-    const newName = prompt('Enter new name (leave blank to keep current):', club.name);
-    const newDescription = prompt('Enter new description (leave blank to keep current):', club.description);
-    
-    if (!newName && !newDescription) return;
-    
-    try {
-      await updateClub(club.id, newName || club.name, newDescription !== null ? newDescription : club.description, token);
-      alert('Club updated successfully!');
-      fetchClubs();
-    } catch (err) {
-      alert('Error: ' + err.message);
-    }
+    setEditingClub(club);
   }
 
   // Delete club (admin only)
@@ -371,7 +365,7 @@ function App() {
               </div>
 
               {/* Only show My Clubs for non-admin users */}
-              {!isAdmin && <MyClubs token={token} />}
+              {!isAdmin && <MyClubs token={token} onCreateEvent={(clubId, clubName) => setShowEventForm({ clubId, clubName })} />}
               
               <div className="quick-stats">
                 <h3>Quick Actions</h3>
@@ -390,33 +384,9 @@ function App() {
               {isAdmin && (
                 <div className="admin-section">
                   <h3>Admin: Manage Clubs</h3>
-                  <button onClick={async () => {
-                    const name = prompt('Club name?');
-                    if (name === null) return; // User cancelled, stop here
-                    if (!name.trim()) {
-                      alert('Club name is required!');
-                      return;
-                    }
-                    
-                    const description = prompt('Description?');
-                    if (description === null) return; // User cancelled, stop here
-                    
-                    try {
-                      const res = await fetch('http://localhost:5001/api/clubs', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ name, description })
-                      });
-                      if (!res.ok) throw new Error('Failed to create club');
-                      fetchClubs();
-                      alert('Club created successfully!');
-                    } catch (err) {
-                      setError('Could not create club');
-                    }
-                  }}>+ Create New Club</button>
+                  <button onClick={() => setShowClubForm(true)}>
+                    + Create New Club
+                  </button>
 
                   <button style={{marginLeft:8}} onClick={handleEditClub}>
                     Edit Club
@@ -446,7 +416,21 @@ function App() {
                     
                     return (
                     <li key={c.id}>
-                      <h3>{c.name}</h3>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', marginBottom:'8px'}}>
+                        <h3 style={{margin:0}}>{c.name}</h3>
+                        {c.category && (
+                          <span style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600'
+                          }}>
+                            {c.category}
+                          </span>
+                        )}
+                      </div>
                       <p style={{color:'#888'}}>{c.description}</p>
                       
                       {/* Show member badge if already an approved member */}
@@ -503,46 +487,8 @@ function App() {
                       
                       {canManageClub && (
                         <>
-                          <button style={{marginLeft:0}} onClick={async () => {
-                            const title = prompt('Event title?');
-                            if (title === null) return; // User cancelled, stop here
-                            if (!title.trim()) {
-                              alert('Event title is required!');
-                              return;
-                            }
-                            
-                            const description = prompt('Description?');
-                            if (description === null) return; // User cancelled, stop here
-                            
-                            const venue = prompt('Venue?');
-                            if (venue === null) return; // User cancelled, stop here
-                            if (!venue.trim()) {
-                              alert('Venue is required!');
-                              return;
-                            }
-                            
-                            const date = prompt('Date (YYYY-MM-DD)?');
-                            if (date === null) return; // User cancelled, stop here
-                            if (!date.trim()) {
-                              alert('Date is required!');
-                              return;
-                            }
-                            
-                            try {
-                              const res = await fetch('http://localhost:5001/api/events', {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${token}`
-                                },
-                                body: JSON.stringify({ title, description, venue, date, ClubId: c.id })
-                              });
-                              if (!res.ok) throw new Error('Failed to create event');
-                              alert('Event created!');
-                              setActiveTab('events');
-                            } catch (err) {
-                              setError('Could not create event');
-                            }
+                          <button style={{marginLeft:0}} onClick={() => {
+                            setShowEventForm({ clubId: c.id, clubName: c.name });
                           }}>Create Event</button>
                           <button style={{marginLeft:8}} onClick={() => fetchPending(c.id)}>
                             Manage Requests
@@ -618,6 +564,47 @@ function App() {
           title="Select Club to Delete"
           onSelect={onClubSelectedForDelete}
           onCancel={() => setClubSelectorMode(null)}
+        />
+      )}
+
+      {/* Event Form Modal */}
+      {showEventForm && (
+        <EventForm
+          clubId={showEventForm.clubId}
+          clubName={showEventForm.clubName}
+          token={token}
+          onSuccess={() => {
+            setShowEventForm(null);
+            fetchClubs();
+            setActiveTab('events');
+          }}
+          onCancel={() => setShowEventForm(null)}
+        />
+      )}
+
+      {/* Club Form Modal - Create */}
+      {showClubForm && (
+        <ClubForm
+          token={token}
+          onSuccess={() => {
+            setShowClubForm(false);
+            fetchClubs();
+          }}
+          onCancel={() => setShowClubForm(false)}
+        />
+      )}
+
+      {/* Club Form Modal - Edit */}
+      {editingClub && (
+        <ClubForm
+          token={token}
+          editMode={true}
+          initialData={editingClub}
+          onSuccess={() => {
+            setEditingClub(null);
+            fetchClubs();
+          }}
+          onCancel={() => setEditingClub(null)}
         />
       )}
     </div>

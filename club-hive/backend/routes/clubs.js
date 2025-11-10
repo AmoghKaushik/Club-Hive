@@ -63,11 +63,12 @@ router.get('/', auth, async (req, res) => {
 // Create club (Admin only)
 router.post('/', [auth, checkRole(['admin'])], async (req, res) => {
   try {
-    const { name, description, facultyAdvisor } = req.body;
+    const { name, description, facultyAdvisor, category } = req.body;
     const club = await Club.create({
       name,
       description,
-      facultyAdvisor
+      facultyAdvisor,
+      category
     });
     res.json(club);
   } catch (error) {
@@ -80,7 +81,7 @@ router.post('/', [auth, checkRole(['admin'])], async (req, res) => {
 router.put('/:clubId', [auth, checkRole(['admin'])], async (req, res) => {
   try {
     const { clubId } = req.params;
-    const { name, description } = req.body;
+    const { name, description, category } = req.body;
     
     const club = await Club.findByPk(clubId);
     if (!club) {
@@ -89,6 +90,7 @@ router.put('/:clubId', [auth, checkRole(['admin'])], async (req, res) => {
     
     if (name) club.name = name;
     if (description !== undefined) club.description = description;
+    if (category !== undefined) club.category = category;
     await club.save();
     
     res.json({ message: 'Club updated successfully', club });
