@@ -28,6 +28,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/analytics', require('./routes/analytics'));
 
 const PORT = process.env.PORT || 5000;
 

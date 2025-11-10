@@ -14,6 +14,7 @@ import EventForm from './components/EventForm.jsx';
 import ClubForm from './components/ClubForm.jsx';
 import NotificationBell from './components/NotificationBell.jsx';
 import Announcements from './components/Announcements.jsx';
+import Analytics from './components/Analytics.jsx';
 
 function App() {
   const [token, setToken] = useState(() => {
@@ -354,6 +355,14 @@ function App() {
             >
               📢 Announcements
             </button>
+            {(user?.role === 'admin' || userMemberships.some(m => m.role === 'board' && m.status === 'approved')) && (
+              <button 
+                className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+                onClick={() => setActiveTab('analytics')}
+              >
+                📊 Analytics
+              </button>
+            )}
             <button 
               className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
               onClick={() => setActiveTab('leaderboard')}
@@ -543,6 +552,13 @@ function App() {
           {activeTab === 'announcements' && (
             <div className="announcements-tab">
               <Announcements token={token} user={user} />
+            </div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === 'analytics' && (
+            <div className="analytics-tab">
+              <Analytics />
             </div>
           )}
 
