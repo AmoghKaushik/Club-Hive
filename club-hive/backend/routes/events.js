@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { Event, Club, ClubMembership, EventParticipation, User } = require('../models');
+const { Event, Club, ClubMembership, EventParticipation, User, Notification, Announcement } = require('../models');
 const auth = require('../middleware/auth');
 const checkRole = require('../middleware/checkRole');
 
@@ -62,6 +62,48 @@ router.post('/', auth, async (req, res) => {
       points: points || 10,
       ClubId
     });
+
+    // Auto-create announcement for the new event
+    const club = await Club.findByPk(ClubId);
+    const eventDate = new Date(date);
+    const formattedDate = eventDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+
+    const announcement = await Announcement.create({
+      title: `New Event: ${title}`,
+      content: `📅 ${title}\n\n${description}\n\n📍 Venue: ${venue}\n🕒 Date: ${formattedDate}\n🎯 Points: ${points || 10}`,
+      clubId: ClubId,
+      createdBy: req.user.id
+    });
+
+    // Create notifications for all club members
+    const clubMembers = await ClubMembership.findAll({
+      where: {
+        clubId: ClubId,
+        status: 'approved'
+      },
+      attributes: ['userId']
+    });
+
+    const notificationPromises = clubMembers.map(member => 
+      Notification.create({
+        userId: member.userId,
+        type: 'announcement',
+        title: `New Event: ${title}`,
+        content: `${club.name} has posted a new event: ${title} on ${formattedDate}`,
+        isRead: false,
+        relatedId: announcement.id,
+        relatedType: 'announcement'
+      })
+    );
+
+    await Promise.all(notificationPromises);
+
     res.json(event);
   } catch (error) {
     console.error(error);
@@ -260,6 +302,17 @@ router.put('/:eventId/attendance', auth, async (req, res) => {
     if (status === 'attended' && previousStatus !== 'attended') {
       user.points = (user.points || 0) + eventPoints;
       await user.save();
+      
+      // Create notification for points awarded
+      await Notification.create({
+        userId: userId,
+        type: 'points_awarded',
+        title: 'Points Earned!',
+        content: `You earned ${eventPoints} points for attending "${event.title}"!`,
+        isRead: false,
+        relatedId: eventId,
+        relatedType: 'event'
+      });
     }
     
     // Update the status

@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { Club, User, ClubMembership } = require('../models');
+const { Club, User, ClubMembership, Notification } = require('../models');
 const auth = require('../middleware/auth');
 const checkRole = require('../middleware/checkRole');
 
@@ -170,6 +170,20 @@ router.put('/:clubId/membership/:userId', auth, async (req, res) => {
 
     membership.status = status;
     await membership.save();
+
+    // Create notification if membership is approved
+    if (status === 'approved') {
+      const club = await Club.findByPk(clubId);
+      await Notification.create({
+        userId: userId,
+        type: 'membership_approved',
+        title: 'Membership Approved!',
+        content: `Your request to join ${club.name} has been approved.`,
+        isRead: false,
+        relatedId: clubId,
+        relatedType: 'club'
+      });
+    }
 
     res.json(membership);
   } catch (error) {

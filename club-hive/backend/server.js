@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { sequelize } = require('./models');
+const { sendEventReminders } = require('./jobs/eventReminders');
 
 const app = express();
 
@@ -35,6 +36,11 @@ async function startServer() {
     // In development, sync models to the database. For production, use migrations instead.
     await sequelize.sync();
     console.log('Database synced successfully');
+
+    // Start event reminder job (runs every hour)
+    console.log('Starting event reminder job...');
+    sendEventReminders(); // Run once on startup
+    setInterval(sendEventReminders, 60 * 60 * 1000); // Run every hour
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

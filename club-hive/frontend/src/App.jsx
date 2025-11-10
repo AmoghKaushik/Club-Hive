@@ -320,7 +320,7 @@ function App() {
               <div className="user-email">{user?.email}</div>
             </div>
             <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-              <NotificationBell token={token} />
+              {user?.role !== 'admin' && <NotificationBell token={token} />}
               <button className="danger logout-btn" onClick={()=>{setToken('');setUser(null);setClubs([]);setEvents([]);setActiveTab('dashboard');navigate('/login')}}>Logout</button>
             </div>
           </div>
