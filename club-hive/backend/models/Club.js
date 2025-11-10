@@ -13,6 +13,10 @@ module.exports = (sequelize, DataTypes) => {
     description: {
       type: DataTypes.TEXT
     },
+    category: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
     facultyAdvisor: {
       type: DataTypes.UUID,
       references: {

@@ -117,6 +117,7 @@
   border: 1px solid #ccc;
   border-radius: 6px;
   background: white;
+  color: #333;
   font-size: 0.9rem;
   cursor: pointer;
   transition: border-color 0.2s;
@@ -126,6 +127,13 @@
 .role-name-select:focus {
   outline: none;
   border-color: #2a3d66;
+}
+
+.role-select option,
+.role-name-select option {
+  background: white;
+  color: #333;
+  padding: 8px;
 }
 
 .role-select {

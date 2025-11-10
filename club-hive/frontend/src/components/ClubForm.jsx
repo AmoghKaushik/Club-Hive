@@ -92,14 +92,18 @@ export default function ClubForm({ token, onSuccess, onCancel, editMode = false,
 
           <div className="form-group">
             <label htmlFor="category">Category</label>
-            <input
-              type="text"
+            <select
               id="category"
               name="category"
               value={formData.category}
               onChange={handleChange}
-              placeholder="e.g., Technical, Cultural, Sports"
-            />
+              required
+            >
+              <option value="">Select a category</option>
+              <option value="Technical">Technical</option>
+              <option value="Cultural">Cultural</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           <div className="form-actions">
